@@ -1,0 +1,415 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_PostPublish" targetNamespace="http://bpmn.io/schema/bpmn" exporter="bpmn-js (https://demo.bpmn.io)" exporterVersion="18.31.0">
+  <bpmn:collaboration id="Collaboration_PostPublish">
+    <bpmn:participant id="Participant_User" name="Автор поста" processRef="Proc_User" />
+    <bpmn:participant id="Participant_Backend" name="Система" processRef="Proc_Backend" />
+    <bpmn:participant id="Participant_ML" name="ML-сервис (CLIP + языковая модель)" processRef="Proc_ML" />
+    <bpmn:messageFlow id="MF1" name="фото и подпись" sourceRef="T1" targetRef="SE_B" />
+    <bpmn:messageFlow id="MF2" name="ошибка" sourceRef="End_Err" targetRef="IC1" />
+    <bpmn:messageFlow id="MF3" name="опубликован" sourceRef="End_Pub" targetRef="IC1" />
+    <bpmn:messageFlow id="MF4" name="запрос на расчёт" sourceRef="B3" targetRef="SE_ML" />
+    <bpmn:messageFlow id="MF5" sourceRef="End_ok" targetRef="IC_ml" />
+    <bpmn:messageFlow id="MF6" name="ошибка расчёта" sourceRef="End_err" targetRef="IC_ml" />
+  </bpmn:collaboration>
+  <bpmn:process id="Proc_User" isExecutable="false">
+    <bpmn:startEvent id="SE_User" name="Нажал «Новый пост»">
+      <bpmn:outgoing>SF_U1</bpmn:outgoing>
+    </bpmn:startEvent>
+    <bpmn:task id="T1" name="Загрузить фото и подпись">
+      <bpmn:incoming>SF_U1</bpmn:incoming>
+      <bpmn:incoming>SF_U4</bpmn:incoming>
+      <bpmn:outgoing>SF_U2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:intermediateCatchEvent id="IC1" name="Получить ответ от системы">
+      <bpmn:incoming>SF_U2</bpmn:incoming>
+      <bpmn:outgoing>SF_U3</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MsgDef_1" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:exclusiveGateway id="G" name="Результат?">
+      <bpmn:incoming>SF_U3</bpmn:incoming>
+      <bpmn:outgoing>SF_U4</bpmn:outgoing>
+      <bpmn:outgoing>SF_U5</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="EE_Done" name="Пост опубликован">
+      <bpmn:incoming>SF_U5</bpmn:incoming>
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="SF_U1" sourceRef="SE_User" targetRef="T1" />
+    <bpmn:sequenceFlow id="SF_U4" name="ошибка" sourceRef="G" targetRef="T1" />
+    <bpmn:sequenceFlow id="SF_U2" sourceRef="T1" targetRef="IC1" />
+    <bpmn:sequenceFlow id="SF_U3" sourceRef="IC1" targetRef="G" />
+    <bpmn:sequenceFlow id="SF_U5" name="опубликован" sourceRef="G" targetRef="EE_Done" />
+  </bpmn:process>
+  <bpmn:process id="Proc_Backend" isExecutable="false">
+    <bpmn:startEvent id="SE_B" name="Получены данные поста">
+      <bpmn:outgoing>SF_B1</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MsgDef_2" />
+    </bpmn:startEvent>
+    <bpmn:task id="B1" name="Проверить состав поста">
+      <bpmn:incoming>SF_B1</bpmn:incoming>
+      <bpmn:outgoing>SF_B2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="B_err" name="Подготовить ошибку">
+      <bpmn:incoming>Flow_19pwqq4</bpmn:incoming>
+      <bpmn:outgoing>SF_B4</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G_valid" name="Валидно?">
+      <bpmn:incoming>SF_B2</bpmn:incoming>
+      <bpmn:outgoing>SF_B5</bpmn:outgoing>
+      <bpmn:outgoing>Flow_19pwqq4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_Err" name="Ошибка отправлена">
+      <bpmn:incoming>SF_B4</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MsgDef_3" />
+    </bpmn:endEvent>
+    <bpmn:task id="B2" name="Создать пост">
+      <bpmn:incoming>SF_B5</bpmn:incoming>
+      <bpmn:outgoing>SF_B6</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="B3" name="Запросить расчёт у ML-сервиса">
+      <bpmn:incoming>SF_B6</bpmn:incoming>
+      <bpmn:outgoing>SF_B7</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:intermediateCatchEvent id="IC_ml" name="Получить результат расчёта">
+      <bpmn:incoming>SF_B7</bpmn:incoming>
+      <bpmn:outgoing>SF_B8</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MsgDef_4" />
+    </bpmn:intermediateCatchEvent>
+    <bpmn:task id="B4" name="Сохранить эмбеддинг и опубликовать пост">
+      <bpmn:incoming>SF_B9</bpmn:incoming>
+      <bpmn:outgoing>SF_B10</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:task id="B5" name="Опубликовать пост без эмбеддинга">
+      <bpmn:incoming>SF_B11</bpmn:incoming>
+      <bpmn:outgoing>SF_B12</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G_emb" name="Эмбеддинг готов?">
+      <bpmn:incoming>SF_B8</bpmn:incoming>
+      <bpmn:outgoing>SF_B9</bpmn:outgoing>
+      <bpmn:outgoing>SF_B11</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_Pub" name="Пост опубликован">
+      <bpmn:incoming>SF_B10</bpmn:incoming>
+      <bpmn:incoming>SF_B12</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MsgDef_5" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="SF_B1" sourceRef="SE_B" targetRef="B1" />
+    <bpmn:sequenceFlow id="SF_B2" sourceRef="B1" targetRef="G_valid" />
+    <bpmn:sequenceFlow id="Flow_19pwqq4" name="нет" sourceRef="G_valid" targetRef="B_err" />
+    <bpmn:sequenceFlow id="SF_B4" sourceRef="B_err" targetRef="End_Err" />
+    <bpmn:sequenceFlow id="SF_B5" name="да" sourceRef="G_valid" targetRef="B2" />
+    <bpmn:sequenceFlow id="SF_B6" sourceRef="B2" targetRef="B3" />
+    <bpmn:sequenceFlow id="SF_B7" sourceRef="B3" targetRef="IC_ml" />
+    <bpmn:sequenceFlow id="SF_B8" sourceRef="IC_ml" targetRef="G_emb" />
+    <bpmn:sequenceFlow id="SF_B9" name="да" sourceRef="G_emb" targetRef="B4" />
+    <bpmn:sequenceFlow id="SF_B10" sourceRef="B4" targetRef="End_Pub" />
+    <bpmn:sequenceFlow id="SF_B11" name="нет" sourceRef="G_emb" targetRef="B5" />
+    <bpmn:sequenceFlow id="SF_B12" sourceRef="B5" targetRef="End_Pub" />
+  </bpmn:process>
+  <bpmn:process id="Proc_ML" isExecutable="false">
+    <bpmn:startEvent id="SE_ML" name="Получен запрос на расчёт">
+      <bpmn:outgoing>SF_M1</bpmn:outgoing>
+      <bpmn:messageEventDefinition id="MsgDef_6" />
+    </bpmn:startEvent>
+    <bpmn:task id="T_ML" name="Рассчитать эмбеддинг (CLIP + языковая модель)">
+      <bpmn:incoming>SF_M1</bpmn:incoming>
+      <bpmn:outgoing>SF_M2</bpmn:outgoing>
+    </bpmn:task>
+    <bpmn:exclusiveGateway id="G_ML" name="Успешно?">
+      <bpmn:incoming>SF_M2</bpmn:incoming>
+      <bpmn:outgoing>SF_M3</bpmn:outgoing>
+      <bpmn:outgoing>SF_M4</bpmn:outgoing>
+    </bpmn:exclusiveGateway>
+    <bpmn:endEvent id="End_err" name="Ошибка расчёта">
+      <bpmn:incoming>SF_M4</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MsgDef_8" />
+    </bpmn:endEvent>
+    <bpmn:endEvent id="End_ok" name="Эмбеддинг готов">
+      <bpmn:incoming>SF_M3</bpmn:incoming>
+      <bpmn:messageEventDefinition id="MsgDef_7" />
+    </bpmn:endEvent>
+    <bpmn:sequenceFlow id="SF_M1" sourceRef="SE_ML" targetRef="T_ML" />
+    <bpmn:sequenceFlow id="SF_M2" sourceRef="T_ML" targetRef="G_ML" />
+    <bpmn:sequenceFlow id="SF_M3" name="да" sourceRef="G_ML" targetRef="End_ok" />
+    <bpmn:sequenceFlow id="SF_M4" name="нет" sourceRef="G_ML" targetRef="End_err" />
+  </bpmn:process>
+  <bpmndi:BPMNDiagram id="BPMNDiagram_1">
+    <bpmndi:BPMNPlane id="BPMNPlane_1" bpmnElement="Collaboration_PostPublish">
+      <bpmndi:BPMNShape id="Participant_Backend_di" bpmnElement="Participant_Backend" isHorizontal="true">
+        <dc:Bounds x="160" y="390" width="1200" height="400" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SE_B_di" bpmnElement="SE_B">
+        <dc:Bounds x="332" y="552" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="315" y="588" width="71" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B1_di" bpmnElement="B1">
+        <dc:Bounds x="412" y="530" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B_err_di" bpmnElement="B_err">
+        <dc:Bounds x="537" y="400" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_valid_di" bpmnElement="G_valid" isMarkerVisible="true">
+        <dc:Bounds x="562" y="545" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="562" y="595" width="51" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Err_di" bpmnElement="End_Err">
+        <dc:Bounds x="714" y="422" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="702" y="458" width="60" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B2_di" bpmnElement="B2">
+        <dc:Bounds x="662" y="530" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B3_di" bpmnElement="B3">
+        <dc:Bounds x="812" y="530" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IC_ml_di" bpmnElement="IC_ml">
+        <dc:Bounds x="962" y="552" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="955" y="502" width="50" height="40" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B4_di" bpmnElement="B4">
+        <dc:Bounds x="1122" y="530" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="B5_di" bpmnElement="B5">
+        <dc:Bounds x="1122" y="650" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_emb_di" bpmnElement="G_emb" isMarkerVisible="true">
+        <dc:Bounds x="1032" y="545" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1029" y="508" width="57" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_Pub_di" bpmnElement="End_Pub">
+        <dc:Bounds x="1282" y="552" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1227.5" y="508" width="65" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SF_B1_di" bpmnElement="SF_B1">
+        <di:waypoint x="368" y="570" />
+        <di:waypoint x="412" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B2_di" bpmnElement="SF_B2">
+        <di:waypoint x="512" y="570" />
+        <di:waypoint x="562" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="Flow_19pwqq4_di" bpmnElement="Flow_19pwqq4">
+        <di:waypoint x="587" y="545" />
+        <di:waypoint x="587" y="480" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="594" y="509.5" width="17" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B4_di" bpmnElement="SF_B4">
+        <di:waypoint x="637" y="440" />
+        <di:waypoint x="714" y="440" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B5_di" bpmnElement="SF_B5">
+        <di:waypoint x="612" y="570" />
+        <di:waypoint x="662" y="570" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="631" y="545" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B6_di" bpmnElement="SF_B6">
+        <di:waypoint x="762" y="570" />
+        <di:waypoint x="812" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B7_di" bpmnElement="SF_B7">
+        <di:waypoint x="912" y="570" />
+        <di:waypoint x="962" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B8_di" bpmnElement="SF_B8">
+        <di:waypoint x="998" y="570" />
+        <di:waypoint x="1032" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B9_di" bpmnElement="SF_B9">
+        <di:waypoint x="1082" y="570" />
+        <di:waypoint x="1122" y="570" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1096" y="545" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B10_di" bpmnElement="SF_B10">
+        <di:waypoint x="1222" y="570" />
+        <di:waypoint x="1282" y="570" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B11_di" bpmnElement="SF_B11">
+        <di:waypoint x="1057" y="595" />
+        <di:waypoint x="1057" y="690" />
+        <di:waypoint x="1122" y="690" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1064" y="633" width="17" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_B12_di" bpmnElement="SF_B12">
+        <di:waypoint x="1222" y="690" />
+        <di:waypoint x="1300" y="690" />
+        <di:waypoint x="1300" y="588" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Participant_User_di" bpmnElement="Participant_User" isHorizontal="true">
+        <dc:Bounds x="160" y="80" width="680" height="260" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SE_User_di" bpmnElement="SE_User">
+        <dc:Bounds x="220" y="252" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="200" y="296" width="77" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T1_di" bpmnElement="T1">
+        <dc:Bounds x="300" y="230" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="IC1_di" bpmnElement="IC1">
+        <dc:Bounds x="460" y="252" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="490" y="225.5" width="79" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_di" bpmnElement="G" isMarkerVisible="true">
+        <dc:Bounds x="635" y="245" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="632" y="295" width="56" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="EE_Done_di" bpmnElement="EE_Done">
+        <dc:Bounds x="767" y="252" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="753" y="296" width="65" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SF_U1_di" bpmnElement="SF_U1">
+        <di:waypoint x="256" y="270" />
+        <di:waypoint x="300" y="270" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_U4_di" bpmnElement="SF_U4">
+        <di:waypoint x="660" y="245" />
+        <di:waypoint x="660" y="150" />
+        <di:waypoint x="350" y="150" />
+        <di:waypoint x="350" y="230" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="486" y="125" width="39" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_U2_di" bpmnElement="SF_U2">
+        <di:waypoint x="400" y="270" />
+        <di:waypoint x="460" y="270" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_U3_di" bpmnElement="SF_U3">
+        <di:waypoint x="496" y="270" />
+        <di:waypoint x="635" y="270" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_U5_di" bpmnElement="SF_U5">
+        <di:waypoint x="685" y="270" />
+        <di:waypoint x="767" y="270" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="690" y="245" width="65" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNShape id="Participant_ML_di" bpmnElement="Participant_ML" isHorizontal="true">
+        <dc:Bounds x="160" y="840" width="1200" height="220" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="SE_ML_di" bpmnElement="SE_ML">
+        <dc:Bounds x="844" y="902" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="821" y="938" width="82" height="27" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="T_ML_di" bpmnElement="T_ML">
+        <dc:Bounds x="924" y="880" width="100" height="80" />
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="G_ML_di" bpmnElement="G_ML" isMarkerVisible="true">
+        <dc:Bounds x="1074" y="895" width="50" height="50" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1074" y="873" width="51" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_err_di" bpmnElement="End_err">
+        <dc:Bounds x="1164" y="980" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1140" y="1016" width="85" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNShape id="End_ok_di" bpmnElement="End_ok">
+        <dc:Bounds x="1164" y="902" width="36" height="36" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1140" y="943" width="86" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNShape>
+      <bpmndi:BPMNEdge id="SF_M1_di" bpmnElement="SF_M1">
+        <di:waypoint x="880" y="920" />
+        <di:waypoint x="924" y="920" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_M2_di" bpmnElement="SF_M2">
+        <di:waypoint x="1024" y="920" />
+        <di:waypoint x="1074" y="920" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_M3_di" bpmnElement="SF_M3">
+        <di:waypoint x="1124" y="920" />
+        <di:waypoint x="1164" y="920" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1123" y="903" width="13" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="SF_M4_di" bpmnElement="SF_M4">
+        <di:waypoint x="1099" y="945" />
+        <di:waypoint x="1099" y="998" />
+        <di:waypoint x="1164" y="998" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1106" y="962" width="17" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF1_di" bpmnElement="MF1">
+        <di:waypoint x="350" y="310" />
+        <di:waypoint x="350" y="550" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="255" y="363" width="80" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF2_di" bpmnElement="MF2">
+        <di:waypoint x="732" y="422" />
+        <di:waypoint x="732" y="355" />
+        <di:waypoint x="478" y="355" />
+        <di:waypoint x="478" y="288" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="659" y="363" width="39" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF3_di" bpmnElement="MF3">
+        <di:waypoint x="1300" y="552" />
+        <di:waypoint x="1300" y="210" />
+        <di:waypoint x="478" y="210" />
+        <di:waypoint x="478" y="252" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1057" y="182" width="65" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF4_di" bpmnElement="MF4">
+        <di:waypoint x="861" y="610" />
+        <di:waypoint x="861" y="902" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="756" y="714" width="88" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF5_di" bpmnElement="MF5">
+        <di:waypoint x="1171" y="906" />
+        <di:waypoint x="1020" y="710" />
+        <di:waypoint x="980" y="590" />
+      </bpmndi:BPMNEdge>
+      <bpmndi:BPMNEdge id="MF6_di" bpmnElement="MF6">
+        <di:waypoint x="1200" y="998" />
+        <di:waypoint x="1300" y="998" />
+        <di:waypoint x="1060" y="720" />
+        <di:waypoint x="988" y="586" />
+        <bpmndi:BPMNLabel>
+          <dc:Bounds x="1258" y="927" width="82" height="14" />
+        </bpmndi:BPMNLabel>
+      </bpmndi:BPMNEdge>
+    </bpmndi:BPMNPlane>
+  </bpmndi:BPMNDiagram>
+</bpmn:definitions>
